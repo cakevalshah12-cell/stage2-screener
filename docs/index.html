@@ -1,0 +1,222 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Stage 2 Breakouts</title>
+<style>
+  /* Layout: one column; summary, sector bars, then the stock table */
+  :root {
+    --bg: #f7f8f6; --panel: #ffffff; --fg: #1d2420; --muted: #5d6862; --line: #dfe3df;
+    --accent: #1f7a5a; --accent-soft: #b8dccd; --ok: #1f7a5a; --warn: #a86a08; --bad: #b83a33;
+    --font: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    --serif: Georgia, "Times New Roman", serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg: #121714; --panel: #1a211d; --fg: #e6ebe7; --muted: #9aa69f; --line: #2c3530;
+      --accent: #4cc093; --accent-soft: #24523f; --ok: #4cc093; --warn: #e0a640; --bad: #ef7d74; color-scheme: dark; }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--fg); font: 15px/1.5 var(--font); }
+  main { max-width: 1200px; margin: 0 auto; padding: 28px 16px 48px; display: flex; flex-direction: column; gap: 28px; }
+  h1 { font-family: var(--serif); font-weight: 400; font-size: 2rem; margin: 0 0 4px; }
+  h2 { font-size: 1.1rem; margin: 0 0 4px; }
+  .muted { color: var(--muted); }
+  .take { font-size: 1.05rem; margin: 6px 0 0; }
+  .tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; }
+  .tile { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 16px; display: flex; flex-direction: column; gap: 2px; }
+  .tile .lbl { font-size: .8rem; color: var(--muted); }
+  .tile .num { font-family: var(--serif); font-size: 2rem; font-variant-numeric: tabular-nums; }
+  .tile .sub { font-size: .78rem; color: var(--muted); }
+  .bars { display: flex; flex-direction: column; gap: 6px; max-width: 720px; }
+  .bar { display: grid; grid-template-columns: minmax(90px, 200px) 1fr; gap: 10px; align-items: center; font-size: .85rem; }
+  .bar .name { color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .bar .track { display: flex; align-items: center; gap: 6px; }
+  .bar .all { height: 18px; background: var(--accent-soft); border-radius: 3px; position: relative; }
+  .bar .strong { position: absolute; inset: 0 auto 0 0; background: var(--accent); border-radius: 3px; }
+  .bar .n { font-variant-numeric: tabular-nums; }
+  .controls { display: flex; flex-wrap: wrap; gap: 14px; align-items: center; margin-bottom: 10px; }
+  .controls label { display: inline-flex; gap: 6px; align-items: center; cursor: pointer; }
+  .controls input[type=search] { font: inherit; padding: 5px 9px; border: 1px solid var(--line); border-radius: 6px; background: var(--panel); color: var(--fg); width: 14rem; max-width: 100%; }
+  .count { margin-left: auto; font-size: .85rem; color: var(--muted); }
+  .wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 10px; background: var(--panel); }
+  table { border-collapse: collapse; width: 100%; font-size: .84rem; font-variant-numeric: tabular-nums; }
+  th, td { padding: 7px 10px; text-align: right; white-space: nowrap; border-bottom: 1px solid var(--line); }
+  th { position: sticky; top: 0; background: var(--panel); color: var(--muted); font-weight: 600; cursor: pointer; user-select: none; }
+  th:hover, th:focus-visible { color: var(--fg); }
+  th.l, td.l { text-align: left; }
+  td.sym { font-weight: 600; }
+  td.notes { white-space: normal; min-width: 14rem; color: var(--muted); text-align: left; }
+  tbody tr:last-child td { border-bottom: 0; }
+  .pill { display: inline-block; padding: 1px 8px; border-radius: 999px; border: 1px solid currentColor; font-size: .78rem; }
+  .ok { color: var(--ok); } .warn { color: var(--warn); } .bad { color: var(--bad); } .mut { color: var(--muted); }
+  details { color: var(--muted); }
+  details summary { cursor: pointer; color: var(--fg); }
+  details ul { padding-left: 1.2em; max-width: 78ch; display: flex; flex-direction: column; gap: 4px; }
+  footer { font-size: .8rem; color: var(--muted); }
+  a { color: var(--accent); }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <h1>Stage 2 Breakouts</h1>
+    <div class="muted">NSE stocks entering Stage 2 on the weekly chart, checked for growth, returns, debt and promoter pledge. Week ending <span id="week">…</span>. Updated every Saturday morning.</div>
+    <p class="take" id="take">Loading this week's results…</p>
+  </header>
+
+  <section class="tiles" aria-label="This week's counts">
+    <div class="tile"><span class="lbl">Stage 2 stocks</span><span class="num" id="k-stage2">–</span><span class="sub">Breakout above 26-week high, rising 30-week average</span></div>
+    <div class="tile"><span class="lbl">Strong fundamentals</span><span class="num" id="k-strong">–</span><span class="sub">Pass growth, ROE, debt and pledge checks</span></div>
+    <div class="tile"><span class="lbl">Just entering</span><span class="num" id="k-entering">–</span><span class="sub">30-week average was flat 10 weeks ago</span></div>
+    <div class="tile"><span class="lbl">Extended</span><span class="num" id="k-extended">–</span><span class="sub">Over 20% above breakout: wait for retest</span></div>
+  </section>
+
+  <section>
+    <h2>Where the breakouts are</h2>
+    <div class="muted" style="font-size:.85rem;margin-bottom:8px">Stage 2 stocks by sector. The darker part passes every fundamental check.</div>
+    <div class="bars" id="bars"></div>
+  </section>
+
+  <section>
+    <h2>Stocks</h2>
+    <div class="controls">
+      <label><input type="checkbox" id="f-strong" checked> Strong fundamentals only</label>
+      <label><input type="checkbox" id="f-fresh"> Hide extended</label>
+      <input type="search" id="f-search" placeholder="Search symbol or sector" aria-label="Search symbol or sector">
+      <span class="count" id="count"></span>
+    </div>
+    <div class="wrap">
+      <table>
+        <thead><tr>
+          <th class="l" data-k="symbol" tabindex="0">Stock</th>
+          <th class="l" data-k="verdict" tabindex="0">Setup</th>
+          <th data-k="close" tabindex="0">Close</th>
+          <th data-k="breakout_level" tabindex="0">Breakout</th>
+          <th data-k="pct_above_breakout" tabindex="0">Above breakout</th>
+          <th data-k="breakout_vol_x" tabindex="0">Volume ×</th>
+          <th data-k="ret_26w_%" tabindex="0">26-week return</th>
+          <th data-k="rev_growth_q_%" tabindex="0">Revenue growth</th>
+          <th data-k="profit_growth_q_%" tabindex="0">Profit growth</th>
+          <th data-k="roe_%" tabindex="0">ROE</th>
+          <th data-k="pe" tabindex="0">P/E</th>
+          <th data-k="pledge_%_of_promoter" tabindex="0">Pledge</th>
+          <th data-k="promoter_chg_1y" tabindex="0">Promoter 1y</th>
+          <th class="l" data-k="sector" tabindex="0">Sector</th>
+          <th class="l">Notes</th>
+        </tr></thead>
+        <tbody id="rows"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <details>
+    <summary>How stocks are picked</summary>
+    <ul>
+      <li><b>Stage 2 (weekly chart):</b> close above a rising 30-week average, a weekly close above the prior 26-week high within the last 6 weeks, beating the Nifty 500 over 26 weeks, and at least ₹5 cr traded a day.</li>
+      <li><b>Just entering:</b> the 30-week average was flat (within 5%) ten weeks ago.</li>
+      <li><b>Volume ×:</b> breakout-week volume divided by the 10-week average. Two or more is a strong breakout.</li>
+      <li><b>Strong fundamentals:</b> market cap over ₹1,000 cr, latest-quarter revenue growth 15%+ and profit growth 20%+, ROE 15%+ and debt/equity 0.75 or less (banks: ROA 1%+), and no more than 5% of promoter shares pledged.</li>
+      <li><b>Promoter 1y:</b> change in promoter holding over a year, in percentage points. A big fall can be an OFS or QIP, not only promoters selling.</li>
+      <li>Prices from Upstox, growth and ROE from Yahoo Finance (one-off items can distort them), promoter holding and pledge from NSE filings. A shortlist to check by chart and results, not a buy list or investment advice.</li>
+    </ul>
+  </details>
+  <footer id="foot"></footer>
+</main>
+
+<script>
+(function () {
+  const $ = (id) => document.getElementById(id);
+  const f1 = new Intl.NumberFormat('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const pct = (v) => (v == null ? '–' : (v > 0 ? '+' : '') + v.toFixed(1) + '%');
+  const fix = (v, d = 1, suf = '') => (v == null ? '–' : v.toFixed(d) + suf);
+  let data = [], sortKey = null, sortDir = -1;
+
+  const setup = (s) => {
+    if (s.extended) return ['Extended: wait for retest', 'warn'];
+    if (s.fund_pass === true && s.was_stage1_flat) return ['Strong, just entering', 'ok'];
+    if (s.fund_pass === true) return ['Strong fundamentals', 'ok'];
+    if (s.was_stage1_flat) return ['Just entering, check fundamentals', 'mut'];
+    return ['Check fundamentals', 'mut'];
+  };
+
+  function render() {
+    const strong = $('f-strong').checked, fresh = $('f-fresh').checked;
+    const q = $('f-search').value.trim().toLowerCase();
+    let rows = data.filter((s) => (!strong || s.fund_pass === true) && (!fresh || !s.extended) &&
+      (!q || String(s.symbol).toLowerCase().includes(q) || String(s.sector || '').toLowerCase().includes(q)));
+    if (sortKey) rows = rows.slice().sort((a, b) => {
+      const va = sortKey === 'verdict' ? setup(a)[0] : a[sortKey], vb = sortKey === 'verdict' ? setup(b)[0] : b[sortKey];
+      if (va == null && vb == null) return 0; if (va == null) return 1; if (vb == null) return -1;
+      return (typeof va === 'number' ? va - vb : String(va).localeCompare(String(vb))) * sortDir;
+    });
+    $('count').textContent = `Showing ${rows.length} of ${data.length}`;
+    const tb = $('rows'); tb.replaceChildren();
+    if (!rows.length) { const td = tb.insertRow().insertCell(); td.colSpan = 15; td.className = 'l'; td.textContent = 'No stocks match these filters.'; return; }
+    const cell = (tr, t, c) => { const td = tr.insertCell(); td.textContent = t; if (c) td.className = c; };
+    for (const s of rows) {
+      const tr = tb.insertRow();
+      cell(tr, s.symbol, 'l sym');
+      const [vt, vc] = setup(s); const td = tr.insertCell(); td.className = 'l';
+      const p = document.createElement('span'); p.className = 'pill ' + vc; p.textContent = vt; td.appendChild(p);
+      cell(tr, s.close == null ? '–' : f1.format(s.close));
+      cell(tr, s.breakout_level == null ? '–' : f1.format(s.breakout_level));
+      cell(tr, pct(s.pct_above_breakout), s.pct_above_breakout > 20 ? 'bad' : '');
+      cell(tr, fix(s.breakout_vol_x, 2, '×'), s.breakout_vol_x >= 2 ? 'ok' : '');
+      cell(tr, pct(s['ret_26w_%']));
+      cell(tr, pct(s['rev_growth_q_%']), s['rev_growth_q_%'] < 0 ? 'bad' : '');
+      cell(tr, pct(s['profit_growth_q_%']), s['profit_growth_q_%'] < 0 ? 'bad' : '');
+      cell(tr, fix(s['roe_%'], 1, '%'));
+      cell(tr, fix(s.pe));
+      cell(tr, fix(s['pledge_%_of_promoter'], 2, '%'), s['pledge_%_of_promoter'] > 5 ? 'bad' : '');
+      cell(tr, s.promoter_chg_1y == null ? '–' : (s.promoter_chg_1y > 0 ? '+' : '') + s.promoter_chg_1y.toFixed(2), s.promoter_chg_1y <= -3 ? 'bad' : '');
+      cell(tr, s.sector || '–', 'l');
+      cell(tr, s.fund_notes || '', 'notes');
+    }
+  }
+
+  function summary(meta) {
+    const strong = data.filter((s) => s.fund_pass === true).length;
+    $('k-stage2').textContent = data.length;
+    $('k-strong').textContent = strong;
+    $('k-entering').textContent = data.filter((s) => s.was_stage1_flat).length;
+    $('k-extended').textContent = data.filter((s) => s.extended).length;
+    const wk = data.reduce((m, s) => (s.week > m ? s.week : m), '');
+    $('week').textContent = wk ? new Date(wk + 'T00:00:00Z').toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' }) : '–';
+    $('take').textContent = `This week ${data.length} stocks are in Stage 2, and ${strong} of them also pass every fundamental check.`;
+    const by = new Map();
+    for (const s of data) { const k = s.sector || 'Unclassified'; const g = by.get(k) || { k, n: 0, st: 0 }; g.n++; if (s.fund_pass === true) g.st++; by.set(k, g); }
+    const groups = [...by.values()].sort((a, b) => b.n - a.n), max = Math.max(1, ...groups.map((g) => g.n));
+    const bars = $('bars'); bars.replaceChildren();
+    for (const g of groups) {
+      const row = document.createElement('div'); row.className = 'bar';
+      row.title = `${g.k}: ${g.n} in Stage 2, ${g.st} with strong fundamentals`;
+      const nm = document.createElement('span'); nm.className = 'name'; nm.textContent = g.k;
+      const tr = document.createElement('span'); tr.className = 'track';
+      const all = document.createElement('span'); all.className = 'all'; all.style.width = (g.n / max * 100) + '%';
+      const st = document.createElement('span'); st.className = 'strong'; st.style.width = (g.n ? g.st / g.n * 100 : 0) + '%';
+      all.appendChild(st);
+      const n = document.createElement('span'); n.className = 'n'; n.textContent = `${g.n} (${g.st} strong)`;
+      tr.append(all, n); row.append(nm, tr); bars.appendChild(row);
+    }
+    const m = Object.fromEntries((meta || []).filter((x) => x.type !== 'code').map((x) => [x.label, x.value]));
+    $('foot').textContent = [m['Run at'] && 'Last run ' + m['Run at'] + ' IST', m['Universe'], m['Price data'] && 'Prices: ' + m['Price data']].filter(Boolean).join(' · ');
+  }
+
+  $('f-strong').addEventListener('change', render);
+  $('f-fresh').addEventListener('change', render);
+  $('f-search').addEventListener('input', render);
+  document.querySelectorAll('th[data-k]').forEach((th) => {
+    const go = () => { const k = th.dataset.k; if (sortKey === k) sortDir *= -1; else { sortKey = k; sortDir = th.classList.contains('l') ? 1 : -1; } render(); };
+    th.addEventListener('click', go);
+    th.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); go(); } });
+  });
+
+  fetch('data/latest.json', { cache: 'no-store' })
+    .then((r) => { if (!r.ok) throw new Error(r.status); return r.json(); })
+    .then((d) => { data = d.rows || []; summary(d.meta); render(); })
+    .catch(() => { $('take').textContent = 'This week’s results could not load. Try again in a minute.'; });
+})();
+</script>
+</body>
+</html>

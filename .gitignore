@@ -1,0 +1,8 @@
+__pycache__/
+*.pyc
+test_*.xlsx
+stage2_results_*.xlsx
+stage2_all_nse_*.xlsx
+stage2_dashboard.json
+dash_index_doc.json
+dashboard_index.html
